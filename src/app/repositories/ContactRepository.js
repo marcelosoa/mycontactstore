@@ -1,83 +1,69 @@
-const { v4 } = require('uuid');
-
-let contacts = [
-  {
-    id: v4(),
-    name: 'Marcelo Soares',
-    email: 'marcelosoares@gmail.com',
-    phone: '123123',
-    category_id: v4(),
-  },
-  {
-    id: v4(),
-    name: 'Roberta Mugue Dias',
-    email: 'robertamugue@gmail.com',
-    phone: '123123',
-    category_id: v4(),
-  },
-];
+const db = require('../../database/index');
 
 class ContactRepository {
   // create
-  create({
+  async create({
     name, email, phone, category_id
   }) {
-    return new Promise((resolve) => {
-      const newContact = {
-        id: v4(),
-        name,
-        email,
-        phone,
-        category_id,
-      };
-      contacts.push(newContact);
-      resolve(newContact);
-    });
+    // this function basically will insert into my table contacts this infos
+    const [row] = await db.query(
+      `INSERT INTO contacts(name, email, phone, category_id)
+      VALUES($1, $2, $3, $4)
+      RETURNING *
+      `, [name, email, phone, category_id]);
+
+    return row;
   }
 
   // Find all users
-  findAll() {
-    return new Promise((resolve) => resolve(contacts));
+  async findAll(orderBy = 'ASC') {
+    const direction = orderBy.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    // will search all users inside my table contacts
+    const rows = await db.query(`
+      SELECT contacts.*, categories.name AS category_name
+      FROM contacts
+      LEFT JOIN categories ON categories.id = contacts.category_id
+      ORDER BY contacts.name ${direction}
+    `);
+
+    return rows;
   }
 
   // Find user by id
-  findById(id) {
-    return new Promise((resolve) => resolve(
-      contacts.find((contact) => contact.id === id),
-    ));
+  async findById(id) {
+    const [rows] = await db.query(`
+    SELECT contacts.*, categories.name AS category_name
+    FROM contacts
+    LEFT JOIN categories ON categories.id = contacts.category_id
+    WHERE contacts.id = $1`, [id]);
+    return rows;
   }
 
-  findByEmail(email) {
-    return new Promise((resolve) => resolve(
-      contacts.find((contact) => contact.email === email),
-    ));
+  // Find user by email
+  async findByEmail(email) {
+    const [row] = await db.query('SELECT * FROM contacts WHERE email = $1', [email]);
+    return row;
   }
 
-  delete(id) {
-    return new Promise((resolve) => {
-      contacts = contacts.filter((contact) => contact.id !== id);
-      resolve();
-    });
+  // delete user
+  async delete(id) {
+    const deleteOp = await db.query('DELETE FROM contacts WHERE id = $1', [id]);
+    return deleteOp;
   }
 
-  update(id, {
+  // update user
+  async update(id, {
     name, email, phone, category_id
   }) {
-    return new Promise((resolve) => {
-      const updatedContent = {
-        id,
-        name,
-        email,
-        phone,
-        category_id,
-      };
-
-      contacts = contacts.map((contact) => (
-        contact.id === id ? updatedContent : contact
-      ));
-
-      resolve(contacts);
-    });
+    const [row] = await db.query(`
+    UPDATE contacts
+    SET name = $1,
+    email = $2,
+    phone = $3,
+    category_id = $4
+    WHERE id = $5
+    `, [name, email, phone, category_id, id]);
+    return row;
   }
 }
 

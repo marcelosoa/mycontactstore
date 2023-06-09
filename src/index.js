@@ -7,4 +7,4 @@ const app = express();
 app.use(express.json());
 app.use(router);
 
-app.listen(3000, () => console.log('App Running at port 3000'));
+app.listen(3001, () => console.log('App Running at port 3001'));
